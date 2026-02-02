@@ -16,7 +16,7 @@
 
       /* pastel pink */
       background-color: #ffd6e7;
-      overflow: hidden;
+      overflow: hidden; /* avoid scrollbars from confetti */
     }
 
     .box {
@@ -26,7 +26,7 @@
       text-align: center;
       box-shadow: 0 4px 10px rgba(0,0,0,0.1);
       position: relative;
-      z-index: 2;
+      z-index: 2; /* above confetti */
       min-width: 320px;
     }
 
@@ -66,17 +66,16 @@
       user-select: none;
     }
 
-    #result, #doggyMsg {
+    #doggyMsg {
       margin-top: 12px;
-      min-height: 22px;
+      min-height: 22px; /* keeps layout stable */
+      color: #444;
     }
 
     /* Confetti */
     .confetti {
       position: fixed;
       top: -20px;
-      width: 10px;
-      height: 14px;
       opacity: 0.95;
       pointer-events: none;
       z-index: 1;
@@ -97,13 +96,12 @@
 
 <body>
   <div class="box" id="box">
-    <img id="valentineImg" src="figures/huh-what.gif" alt="cute pic" class="box-image">
-    <h2 id="questionTitle">Do you want to be my valentines date?</h2>
+    <img id="valentineImg" src="figures/gehna.jpeg" alt="cute pic" class="box-image">
+    <h2 id="questionTitle">Do you want to be my valentine?</h2>
 
     <button class="yes" id="yesBtn">Yes</button>
     <button class="no" id="noBtn">No</button>
 
-    <p id="result"></p>
     <p id="doggyMsg"></p>
   </div>
 
@@ -112,24 +110,22 @@
     const yesBtn = document.getElementById("yesBtn");
     const noBtn = document.getElementById("noBtn");
 
-    // --- After 5 seconds show message ---
+    // After 5 seconds show message
     setTimeout(() => {
       document.getElementById("doggyMsg").innerText = "hm no seems to be doggy";
     }, 5000);
 
-    // --- YES click behavior ---
+    // YES: only image + title + confetti
     yesBtn.addEventListener("click", () => {
-      document.getElementById("result").innerText = "You clicked YES 😄";
-      document.getElementById("questionTitle").innerText = "YAYYYYY!!!!! And good luck with the exam tomorrow! :)";
+      document.getElementById("questionTitle").innerText = "YAY!! Happy Valentine’s 💖";
 
-      // Change to your "YES" gif/photo:
-      document.getElementById("valentineImg").src = "figures/love.gif";
+      // swap to your YES gif/photo:
+      document.getElementById("valentineImg").src = "figures/yes.gif";
 
       burstConfettiSides();
     });
 
-    // --- NO always dodges ---
-    // Make it dodge on hover and on click/touch attempts
+    // NO always dodges (no text shown anywhere)
     ["mouseenter", "mouseover", "pointerenter", "click", "touchstart"].forEach(evt => {
       noBtn.addEventListener(evt, (e) => {
         e.preventDefault();
@@ -137,33 +133,87 @@
       }, { passive: false });
     });
 
-    // Put No somewhere sensible at load
-    placeNoNearBottomRight();
+    // Position No initially so it appears near the Yes button
+    placeNoInitial();
 
-    function placeNoNearBottomRight() {
-      // place relative to the box so it starts near the Yes button
-      const boxRect = box.getBoundingClientRect();
-      const btnRect = noBtn.getBoundingClientRect();
+    function placeNoInitial() {
+      // Ensure layout is ready
+      requestAnimationFrame(() => {
+        const btnRect = noBtn.getBoundingClientRect();
 
-      const x = Math.max(0, Math.min(box.clientWidth - btnRect.width, box.clientWidth * 0.62));
-      const y = Math.max(0, Math.min(box.clientHeight - btnRect.height, box.clientHeight * 0.62));
+        const x = Math.max(10, Math.min(box.clientWidth - btnRect.width - 10, box.clientWidth * 0.62));
+        const y = Math.max(10, Math.min(box.clientHeight - btnRect.height - 10, box.clientHeight * 0.62));
 
-      noBtn.style.left = x + "px";
-      noBtn.style.top = y + "px";
+        noBtn.style.left = x + "px";
+        noBtn.style.top = y + "px";
+      });
     }
 
     function dodgeNo() {
-      // IMPORTANT: since .no is absolute, it positions within the nearest positioned ancestor (.box)
       const btnRect = noBtn.getBoundingClientRect();
-
-      // give it some padding so it doesn't overlap edges
       const pad = 10;
 
       const maxX = Math.max(pad, box.clientWidth - btnRect.width - pad);
       const maxY = Math.max(pad, box.clientHeight - btnRect.height - pad);
 
-      // If box is too small, just jitter a bit
-      let randomX = pad + Math.random() * (maxX - pad);
-      let randomY = pad + Math.random() * (maxY - pad);
+      const randomX = pad + Math.random() * (maxX - pad);
+      const randomY = pad + Math.random() * (maxY - pad);
 
-      noBtn.style.left
+      noBtn.style.left = randomX + "px";
+      noBtn.style.top = randomY + "px";
+    }
+
+    // Confetti from both sides
+    function burstConfettiSides() {
+      const durationMs = 2000;
+      const spawnIntervalMs = 60;
+      const start = Date.now();
+
+      const timer = setInterval(() => {
+        if (Date.now() - start > durationMs) {
+          clearInterval(timer);
+          return;
+        }
+        spawnConfetti("left");
+        spawnConfetti("right");
+      }, spawnIntervalMs);
+    }
+
+    function spawnConfetti(side) {
+      const pieces = 7;
+      const colors = ["#ff5fa2", "#ffcc00", "#7ae7ff", "#b6ff7a", "#caa6ff", "#ff8a5b", "#ffffff"];
+
+      for (let i = 0; i < pieces; i++) {
+        const el = document.createElement("div");
+        el.className = "confetti";
+
+        const w = 6 + Math.random() * 8;
+        const h = 10 + Math.random() * 10;
+        el.style.width = w + "px";
+        el.style.height = h + "px";
+
+        el.style.backgroundColor = colors[Math.floor(Math.random() * colors.length)];
+
+        // Spawn near left/right edge
+        const edgePadding = 10;
+        const spread = 140;
+        const x = side === "left"
+          ? edgePadding + Math.random() * spread
+          : (window.innerWidth - edgePadding - Math.random() * spread);
+
+        el.style.left = x + "px";
+
+        const fallTime = 1200 + Math.random() * 1200;
+        el.style.animationDuration = fallTime + "ms";
+        el.style.animationDelay = (Math.random() * 200) + "ms";
+
+        const rotateStart = Math.random() * 360;
+        el.style.transform = `translateY(0) rotate(${rotateStart}deg)`;
+
+        document.body.appendChild(el);
+        setTimeout(() => el.remove(), fallTime + 500);
+      }
+    }
+  </script>
+</body>
+</html>
