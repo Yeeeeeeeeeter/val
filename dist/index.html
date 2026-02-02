@@ -143,141 +143,165 @@
     <p id="doggyMsg"></p>
   </div>
 
-  <script>
-  document.addEventListener("DOMContentLoaded", () => {
-    const btnRow = document.getElementById("btnRow");
-    const noZone = document.getElementById("noZone");
-    const yesBtn = document.getElementById("yesBtn");
-    const noBtn = document.getElementById("noBtn");
-    const doggyMsg = document.getElementById("doggyMsg");
-    const titleEl = document.getElementById("questionTitle");
-    const imgEl = document.getElementById("valentineImg");
+<script>
+document.addEventListener("DOMContentLoaded", () => {
+  const box = document.getElementById("box");
+  const btnRow = document.getElementById("btnRow");
+  const yesBtn = document.getElementById("yesBtn");
+  const noBtn = document.getElementById("noBtn");
+  const doggyMsg = document.getElementById("doggyMsg");
+  const titleEl = document.getElementById("questionTitle");
+  const imgEl = document.getElementById("valentineImg");
 
-    let noMovedOnce = false;
-    let doggyTimerStarted = false;
-    let doggyTimeoutId = null;
-    let locked = false; // becomes true after Yes
+  let noMovedOnce = false;
+  let doggyTimerStarted = false;
+  let doggyTimeoutId = null;
+  let locked = false;
 
-    // YES: change image + title + confetti, hide message, hide buttons
-    yesBtn.addEventListener("click", () => {
-      locked = true;
+  // YES: change UI, hide buttons, stop everything
+  yesBtn.addEventListener("click", () => {
+    locked = true;
 
-      // hide buttons
-      btnRow.style.display = "none";
+    btnRow.style.display = "none";
+    doggyMsg.innerText = "";
+    if (doggyTimeoutId) clearTimeout(doggyTimeoutId);
 
-      // hide doggy message and stop pending timer
-      doggyMsg.innerText = "";
-      if (doggyTimeoutId) clearTimeout(doggyTimeoutId);
+    titleEl.innerText = "YAY!! And good luck with the exam tomorrow!!!! :)))";
+    imgEl.src = "figures/love.gif";
 
-      // update UI
-      titleEl.innerText = "YAY!! And good luck with the exam tomorrow!!!! :)))";
-      imgEl.src = "figures/love.gif";
+    burstConfettiSides();
+  });
 
-      burstConfettiSides();
-    });
+  // NO dodges aggressively
+  ["pointerenter", "mouseenter", "mouseover", "mousemove", "click", "touchstart"].forEach(evt => {
+    noBtn.addEventListener(evt, (e) => {
+      if (locked) return;
+      e.preventDefault();
+      dodgeNoAnywhereInBox();
+    }, { passive: false });
+  });
 
-    // NO dodges on approach/click/touch
-    const dodgeEvents = ["pointerenter", "mouseenter", "mouseover", "click", "touchstart"];
-    dodgeEvents.forEach(evt => {
-      noBtn.addEventListener(evt, (e) => {
-        if (locked) return;
-        e.preventDefault();
-        dodgeNoWithinNoZone();
-      }, { passive: false });
-    });
+  function startDoggyTimerAfterFirstMove() {
+    if (doggyTimerStarted) return;
+    doggyTimerStarted = true;
 
-    function startDoggyTimerAfterFirstMove() {
-      if (doggyTimerStarted) return;
-      doggyTimerStarted = true;
+    doggyTimeoutId = setTimeout(() => {
+      if (!locked) doggyMsg.innerText = "hm no seems to be doggy";
+    }, 7000);
+  }
 
-      doggyTimeoutId = setTimeout(() => {
-        if (!locked) doggyMsg.innerText = "Hm NO seems to be doggy";
-      }, 7000);
+  function dodgeNoAnywhereInBox() {
+    if (locked) return;
+
+    const boxRect = box.getBoundingClientRect();
+    const btnRect = noBtn.getBoundingClientRect();
+    const imgRect = imgEl.getBoundingClientRect();
+    const titleRect = titleEl.getBoundingClientRect();
+
+    // First dodge: detach No from the button row
+    if (!noMovedOnce) {
+      noMovedOnce = true;
+      startDoggyTimerAfterFirstMove();
+
+      const leftInBox = btnRect.left - boxRect.left;
+      const topInBox  = btnRect.top  - boxRect.top;
+
+      noBtn.classList.remove("normal");
+      noBtn.style.position = "absolute";
+      noBtn.style.left = leftInBox + "px";
+      noBtn.style.top  = topInBox + "px";
     }
 
-    function dodgeNoWithinNoZone() {
-      if (locked) return;
+    const pad = 16;
 
-      // On first dodge: switch No to absolute inside the right zone
-      if (!noMovedOnce) {
-        noMovedOnce = true;
-        startDoggyTimerAfterFirstMove();
+    const minX = pad;
+    const maxX = box.clientWidth - btnRect.width - pad;
+    const minY = titleRect.bottom - boxRect.top + 20; // below title
+    const maxY = box.clientHeight - btnRect.height - pad;
 
-        const zoneRect = noZone.getBoundingClientRect();
-        const btnRect = noBtn.getBoundingClientRect();
-        const leftInZone = btnRect.left - zoneRect.left;
-        const topInZone  = btnRect.top  - zoneRect.top;
-
-        noBtn.classList.remove("normal");
-        noBtn.style.position = "absolute";
-        noBtn.style.left = leftInZone + "px";
-        noBtn.style.top  = topInZone + "px";
-      }
-
-      const zoneRect = noZone.getBoundingClientRect();
-      const btnRect = noBtn.getBoundingClientRect();
-
-      const pad = 6;
-      const minX = pad;
-      const minY = pad;
-      const maxX = Math.max(minX, noZone.clientWidth - btnRect.width - pad);
-      const maxY = Math.max(minY, noZone.clientHeight - btnRect.height - pad);
-
+    // Try several times to avoid overlapping image/title
+    for (let tries = 0; tries < 20; tries++) {
       const x = minX + Math.random() * (maxX - minX);
       const y = minY + Math.random() * (maxY - minY);
 
-      noBtn.style.left = x + "px";
-      noBtn.style.top  = y + "px";
-    }
+      const candLeft = boxRect.left + x;
+      const candTop = boxRect.top + y;
+      const candRight = candLeft + btnRect.width;
+      const candBottom = candTop + btnRect.height;
 
-    // Confetti from both sides
-    function burstConfettiSides() {
-      const durationMs = 2000;
-      const spawnIntervalMs = 60;
-      const start = Date.now();
+      const overlapsImage =
+        !(candRight < imgRect.left ||
+          candLeft > imgRect.right ||
+          candBottom < imgRect.top ||
+          candTop > imgRect.bottom);
 
-      const timer = setInterval(() => {
-        if (Date.now() - start > durationMs) {
-          clearInterval(timer);
-          return;
-        }
-        spawnConfetti("left");
-        spawnConfetti("right");
-      }, spawnIntervalMs);
-    }
+      const overlapsTitle =
+        !(candRight < titleRect.left ||
+          candLeft > titleRect.right ||
+          candBottom < titleRect.top ||
+          candTop > titleRect.bottom);
 
-    function spawnConfetti(side) {
-      const pieces = 7;
-      const colors = ["#ff5fa2", "#ffcc00", "#7ae7ff", "#b6ff7a", "#caa6ff", "#ff8a5b", "#ffffff"];
-
-      for (let i = 0; i < pieces; i++) {
-        const el = document.createElement("div");
-        el.className = "confetti";
-
-        const w = 6 + Math.random() * 8;
-        const h = 10 + Math.random() * 10;
-        el.style.width = w + "px";
-        el.style.height = h + "px";
-        el.style.backgroundColor = colors[Math.floor(Math.random() * colors.length)];
-
-        const edgePadding = 10;
-        const spread = 140;
-        const x = side === "left"
-          ? edgePadding + Math.random() * spread
-          : (window.innerWidth - edgePadding - Math.random() * spread);
-
-        el.style.left = x + "px";
-
-        const fallTime = 1200 + Math.random() * 1200;
-        el.style.animationDuration = fallTime + "ms";
-        el.style.animationDelay = (Math.random() * 200) + "ms";
-        el.style.transform = `translateY(0) rotate(${Math.random() * 360}deg)`;
-
-        document.body.appendChild(el);
-        setTimeout(() => el.remove(), fallTime + 500);
+      if (!overlapsImage && !overlapsTitle) {
+        noBtn.style.left = x + "px";
+        noBtn.style.top = y + "px";
+        return;
       }
     }
-  });
-  </script>
+
+    // Fallback (still big movement)
+    noBtn.style.left = (minX + Math.random() * (maxX - minX)) + "px";
+    noBtn.style.top  = (minY + Math.random() * (maxY - minY)) + "px";
+  }
+
+  // Confetti from both sides
+  function burstConfettiSides() {
+    const durationMs = 2000;
+    const spawnIntervalMs = 60;
+    const start = Date.now();
+
+    const timer = setInterval(() => {
+      if (Date.now() - start > durationMs) {
+        clearInterval(timer);
+        return;
+      }
+      spawnConfetti("left");
+      spawnConfetti("right");
+    }, spawnIntervalMs);
+  }
+
+  function spawnConfetti(side) {
+    const pieces = 7;
+    const colors = ["#ff5fa2", "#ffcc00", "#7ae7ff", "#b6ff7a", "#caa6ff", "#ff8a5b", "#ffffff"];
+
+    for (let i = 0; i < pieces; i++) {
+      const el = document.createElement("div");
+      el.className = "confetti";
+
+      const w = 6 + Math.random() * 8;
+      const h = 10 + Math.random() * 10;
+      el.style.width = w + "px";
+      el.style.height = h + "px";
+      el.style.backgroundColor = colors[Math.floor(Math.random() * colors.length)];
+
+      const edgePadding = 10;
+      const spread = 140;
+      const x = side === "left"
+        ? edgePadding + Math.random() * spread
+        : (window.innerWidth - edgePadding - Math.random() * spread);
+
+      el.style.left = x + "px";
+
+      const fallTime = 1200 + Math.random() * 1200;
+      el.style.animationDuration = fallTime + "ms";
+      el.style.animationDelay = (Math.random() * 200) + "ms";
+      el.style.transform = `translateY(0) rotate(${Math.random() * 360}deg)`;
+
+      document.body.appendChild(el);
+      setTimeout(() => el.remove(), fallTime + 500);
+    }
+  }
+});
+</script>
+
 </body>
 </html>
