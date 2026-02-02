@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Yes or No</title>
+
+  <style>
+    body {
+      height: 100vh;
+      margin: 0;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      font-family: Arial, sans-serif;
+
+      /* pastel pink */
+      background-color: #ffd6e7;
+      overflow: hidden;
+    }
+
+    .box {
+      background: white;
+      padding: 30px;
+      border-radius: 20px;
+      text-align: center;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+      position: relative;
+      z-index: 2;
+      min-width: 320px;
+    }
+
+    .box-image {
+      width: 200px;
+      margin-bottom: 20px;
+      border-radius: 14px;
+      object-fit: cover;
+    }
+
+    button {
+      padding: 10px 25px;
+      font-size: 16px;
+      margin: 10px;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      font-weight: 600;
+    }
+
+    /* rosy red */
+    .yes {
+      background-color: #e84a6a;
+      color: white;
+    }
+    .yes:active {
+      transform: translateY(1px);
+    }
+
+    /* grey */
+    .no {
+      background-color: #9e9e9e;
+      color: white;
+
+      position: absolute;
+      transition: left 0.18s ease, top 0.18s ease;
+      user-select: none;
+    }
+
+    #result, #doggyMsg {
+      margin-top: 12px;
+      min-height: 22px;
+    }
+
+    /* Confetti */
+    .confetti {
+      position: fixed;
+      top: -20px;
+      width: 10px;
+      height: 14px;
+      opacity: 0.95;
+      pointer-events: none;
+      z-index: 1;
+      border-radius: 2px;
+      animation-name: confetti-fall;
+      animation-timing-function: linear;
+      animation-fill-mode: forwards;
+    }
+
+    @keyframes confetti-fall {
+      to {
+        transform: translateY(120vh) rotate(720deg);
+        opacity: 1;
+      }
+    }
+  </style>
+</head>
+
+<body>
+  <div class="box" id="box">
+    <img id="valentineImg" src="figures/huh-what.gif" alt="cute pic" class="box-image">
+    <h2 id="questionTitle">Do you want to be my valentines date?</h2>
+
+    <button class="yes" id="yesBtn">Yes</button>
+    <button class="no" id="noBtn">No</button>
+
+    <p id="result"></p>
+    <p id="doggyMsg"></p>
+  </div>
+
+  <script>
+    const box = document.getElementById("box");
+    const yesBtn = document.getElementById("yesBtn");
+    const noBtn = document.getElementById("noBtn");
+
+    // --- After 5 seconds show message ---
+    setTimeout(() => {
+      document.getElementById("doggyMsg").innerText = "hm no seems to be doggy";
+    }, 5000);
+
+    // --- YES click behavior ---
+    yesBtn.addEventListener("click", () => {
+      document.getElementById("result").innerText = "You clicked YES 😄";
+      document.getElementById("questionTitle").innerText = "YAYYYYY!!!!! And good luck with the exam tomorrow! :)";
+
+      // Change to your "YES" gif/photo:
+      document.getElementById("valentineImg").src = "figures/love.gif";
+
+      burstConfettiSides();
+    });
+
+    // --- NO always dodges ---
+    // Make it dodge on hover and on click/touch attempts
+    ["mouseenter", "mouseover", "pointerenter", "click", "touchstart"].forEach(evt => {
+      noBtn.addEventListener(evt, (e) => {
+        e.preventDefault();
+        dodgeNo();
+      }, { passive: false });
+    });
+
+    // Put No somewhere sensible at load
+    placeNoNearBottomRight();
+
+    function placeNoNearBottomRight() {
+      // place relative to the box so it starts near the Yes button
+      const boxRect = box.getBoundingClientRect();
+      const btnRect = noBtn.getBoundingClientRect();
+
+      const x = Math.max(0, Math.min(box.clientWidth - btnRect.width, box.clientWidth * 0.62));
+      const y = Math.max(0, Math.min(box.clientHeight - btnRect.height, box.clientHeight * 0.62));
+
+      noBtn.style.left = x + "px";
+      noBtn.style.top = y + "px";
+    }
+
+    function dodgeNo() {
+      // IMPORTANT: since .no is absolute, it positions within the nearest positioned ancestor (.box)
+      const btnRect = noBtn.getBoundingClientRect();
+
+      // give it some padding so it doesn't overlap edges
+      const pad = 10;
+
+      const maxX = Math.max(pad, box.clientWidth - btnRect.width - pad);
+      const maxY = Math.max(pad, box.clientHeight - btnRect.height - pad);
+
+      // If box is too small, just jitter a bit
+      let randomX = pad + Math.random() * (maxX - pad);
+      let randomY = pad + Math.random() * (maxY - pad);
+
+      noBtn.style.left
