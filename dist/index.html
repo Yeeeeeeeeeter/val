@@ -13,9 +13,7 @@
       justify-content: center;
       align-items: center;
       font-family: Arial, sans-serif;
-
-      /* pastel pink */
-      background-color: #ffd6e7;
+      background-color: #ffd6e7; /* pastel pink */
       overflow: hidden; /* avoid scrollbars from confetti */
     }
 
@@ -40,7 +38,6 @@
     button {
       padding: 10px 25px;
       font-size: 16px;
-      margin: 10px;
       border: none;
       border-radius: 8px;
       cursor: pointer;
@@ -60,10 +57,28 @@
     .no {
       background-color: #9e9e9e;
       color: white;
-
-      position: absolute;
-      transition: left 0.18s ease, top 0.18s ease;
       user-select: none;
+      -webkit-user-select: none;
+      touch-action: none;
+      transition: left 0.18s ease, top 0.18s ease;
+    }
+
+    /* Button row: normal-looking choices, not centered */
+    .btn-row {
+      display: flex;
+      justify-content: flex-start; /* left aligned */
+      gap: 12px;
+      position: relative;          /* anchor for absolute No positioning after first dodge */
+      margin-top: 10px;
+      padding: 6px 0;
+      height: 52px;                /* reserve space so layout doesn't jump */
+    }
+
+    /* While No is still "normal" */
+    .no.normal {
+      position: relative;
+      left: 0;
+      top: 0;
     }
 
     #doggyMsg {
@@ -93,74 +108,115 @@
     }
   </style>
 </head>
-<!-- DEPLOY MARK: 2026-02-03-v2 -->
+
 <body>
   <div class="box" id="box">
-    <img id="valentineImg" src="figures/gehna.jpeg" alt="cute pic" class="box-image">
+    <img id="valentineImg" src="figures/huh-what.jpeg" alt="cute pic" class="box-image">
     <h2 id="questionTitle">Do you want to be my valentine?</h2>
 
-    <button class="yes" id="yesBtn">Yes</button>
-    <button class="no" id="noBtn">No</button>
+    <div class="btn-row" id="btnRow">
+      <button class="yes" id="yesBtn">Yes</button>
+      <button class="no normal" id="noBtn">No</button>
+    </div>
 
     <p id="doggyMsg"></p>
   </div>
 
   <script>
-    const box = document.getElementById("box");
+  document.addEventListener("DOMContentLoaded", () => {
+    const btnRow = document.getElementById("btnRow");
     const yesBtn = document.getElementById("yesBtn");
     const noBtn = document.getElementById("noBtn");
+    const doggyMsg = document.getElementById("doggyMsg");
+    const titleEl = document.getElementById("questionTitle");
+    const imgEl = document.getElementById("valentineImg");
 
-    // After 5 seconds show message
-    setTimeout(() => {
-      document.getElementById("doggyMsg").innerText = "hm no seems to be doggy";
-    }, 5000);
+    let noMovedOnce = false;
+    let doggyTimerStarted = false;
+    let doggyTimeoutId = null;
 
-    // YES: only image + title + confetti
+    // YES: change image + title + confetti, and hide doggy message
     yesBtn.addEventListener("click", () => {
-      document.getElementById("questionTitle").innerText = "YAY!! Happy Valentine’s 💖";
+      doggyMsg.innerText = "";                // hide message
+      if (doggyTimeoutId) clearTimeout(doggyTimeoutId); // stop pending timer if any
 
-      // swap to your YES gif/photo:
-      document.getElementById("valentineImg").src = "figures/yes.gif";
-
+      titleEl.innerText = "YAY!! And good luck with the exam tomorrow!!!! :)))";
+      imgEl.src = "figures/love.gif";         // ensure this exists in dist/figures/
       burstConfettiSides();
     });
 
-    // NO always dodges (no text shown anywhere)
-    ["mouseenter", "mouseover", "pointerenter", "click", "touchstart"].forEach(evt => {
+    // NO dodges on approach/click/touch
+    ["pointerenter", "mouseenter", "mouseover", "click", "touchstart"].forEach(evt => {
       noBtn.addEventListener(evt, (e) => {
         e.preventDefault();
-        dodgeNo();
+        dodgeNoWithinRow();
       }, { passive: false });
     });
 
-    // Position No initially so it appears near the Yes button
-    placeNoInitial();
+    function startDoggyTimerAfterFirstMove() {
+      if (doggyTimerStarted) return;
+      doggyTimerStarted = true;
 
-    function placeNoInitial() {
-      // Ensure layout is ready
-      requestAnimationFrame(() => {
-        const btnRect = noBtn.getBoundingClientRect();
-
-        const x = Math.max(10, Math.min(box.clientWidth - btnRect.width - 10, box.clientWidth * 0.62));
-        const y = Math.max(10, Math.min(box.clientHeight - btnRect.height - 10, box.clientHeight * 0.62));
-
-        noBtn.style.left = x + "px";
-        noBtn.style.top = y + "px";
-      });
+      doggyTimeoutId = setTimeout(() => {
+        doggyMsg.innerText = "hm no seems to be doggy";
+      }, 7000);
     }
 
-    function dodgeNo() {
+    function dodgeNoWithinRow() {
+      // On first dodge, convert No to absolute within the button row
+      if (!noMovedOnce) {
+        noMovedOnce = true;
+        startDoggyTimerAfterFirstMove();
+
+        // Lock current position before switching positioning
+        const rowRect = btnRow.getBoundingClientRect();
+        const btnRect = noBtn.getBoundingClientRect();
+        const leftInRow = btnRect.left - rowRect.left;
+        const topInRow  = btnRect.top - rowRect.top;
+
+        noBtn.classList.remove("normal");
+        noBtn.style.position = "absolute";
+        noBtn.style.left = leftInRow + "px";
+        noBtn.style.top  = topInRow + "px";
+      }
+
+      const rowRect = btnRow.getBoundingClientRect();
       const btnRect = noBtn.getBoundingClientRect();
-      const pad = 10;
+      const yesRect = yesBtn.getBoundingClientRect();
 
-      const maxX = Math.max(pad, box.clientWidth - btnRect.width - pad);
-      const maxY = Math.max(pad, box.clientHeight - btnRect.height - pad);
+      const pad = 6;
+      const minX = pad;
+      const minY = pad;
+      const maxX = Math.max(minX, btnRow.clientWidth - btnRect.width - pad);
+      const maxY = Math.max(minY, btnRow.clientHeight - btnRect.height - pad);
 
-      const randomX = pad + Math.random() * (maxX - pad);
-      const randomY = pad + Math.random() * (maxY - pad);
+      // Try multiple spots to avoid overlapping Yes
+      for (let tries = 0; tries < 14; tries++) {
+        const x = minX + Math.random() * (maxX - minX);
+        const y = minY + Math.random() * (maxY - minY);
 
-      noBtn.style.left = randomX + "px";
-      noBtn.style.top = randomY + "px";
+        // Candidate in viewport coords for overlap check
+        const candLeft = rowRect.left + x;
+        const candTop = rowRect.top + y;
+        const candRight = candLeft + btnRect.width;
+        const candBottom = candTop + btnRect.height;
+
+        const overlapsYes =
+          !(candRight < yesRect.left ||
+            candLeft > yesRect.right ||
+            candBottom < yesRect.top ||
+            candTop > yesRect.bottom);
+
+        if (!overlapsYes) {
+          noBtn.style.left = x + "px";
+          noBtn.style.top = y + "px";
+          return;
+        }
+      }
+
+      // Fallback if overlap-avoidance fails
+      noBtn.style.left = (minX + Math.random() * (maxX - minX)) + "px";
+      noBtn.style.top  = (minY + Math.random() * (maxY - minY)) + "px";
     }
 
     // Confetti from both sides
@@ -191,10 +247,8 @@
         const h = 10 + Math.random() * 10;
         el.style.width = w + "px";
         el.style.height = h + "px";
-
         el.style.backgroundColor = colors[Math.floor(Math.random() * colors.length)];
 
-        // Spawn near left/right edge
         const edgePadding = 10;
         const spread = 140;
         const x = side === "left"
@@ -206,14 +260,13 @@
         const fallTime = 1200 + Math.random() * 1200;
         el.style.animationDuration = fallTime + "ms";
         el.style.animationDelay = (Math.random() * 200) + "ms";
-
-        const rotateStart = Math.random() * 360;
-        el.style.transform = `translateY(0) rotate(${rotateStart}deg)`;
+        el.style.transform = `translateY(0) rotate(${Math.random() * 360}deg)`;
 
         document.body.appendChild(el);
         setTimeout(() => el.remove(), fallTime + 500);
       }
     }
+  });
   </script>
 </body>
 </html>
