@@ -124,67 +124,93 @@
         "Bop! Heart collected 💘"
       ];
 
-      const messageArea = document.getElementById("messageArea");
-      let messageTimeoutId = null;
+      let messageTimeoutIds = new Set();
 
-      function showRandomMessage() {
+      function showMessageAtElement(el) {
         if (messages.length === 0) return;
-        const msg = messages[Math.floor(Math.random() * messages.length)];
-        messageArea.textContent = msg;
 
-        if (messageTimeoutId) clearTimeout(messageTimeoutId);
-        messageTimeoutId = setTimeout(() => {
-          messageArea.textContent = "";
-        }, 2500); // ~2.5 seconds
-      }
+        const rect = el.getBoundingClientRect(); // position of heart on screen [web:58]
+        const msg = messages[Math.floor(Math.random() * messages.length)];
+
+        const bubble = document.createElement("div");
+        bubble.textContent = msg;
+        bubble.style.position = "fixed";
+        bubble.style.left = rect.left + rect.width / 2 + "px";
+        bubble.style.top = rect.top + "px";
+        bubble.style.transform = "translate(-50%, -50%)";
+        bubble.style.background = "rgba(0,0,0,0.75)";
+        bubble.style.color = "white";
+        bubble.style.padding = "6px 10px";
+        bubble.style.borderRadius = "10px";
+        bubble.style.fontSize = "14px";
+        bubble.style.zIndex = 4;
+        bubble.style.whiteSpace = "nowrap";
+        bubble.style.pointerEvents = "none";
+        bubble.style.opacity = "0";
+        bubble.style.transition = "opacity 0.2s ease";
+
+        document.body.appendChild(bubble);
+  
+        requestAnimationFrame(() => {
+          bubble.style.opacity = "1";
+        });
+
+      const timeoutId = setTimeout(() => {
+        bubble.style.opacity = "0";
+        setTimeout(() => bubble.remove(), 200);
+        messageTimeoutIds.delete(timeoutId);
+      }, 2500); // ~2.5 seconds
+
+      messageTimeoutIds.add(timeoutId);
+    }
 
       function spawnHeart() {
         if (activeHearts.size >= maxHearts) return;
-
+  
         const heart = document.createElement("span");
         heart.className = "floating-heart";
         heart.textContent = "❤️"; // emoji, no extra file needed
-
+  
         // random horizontal position
         const x = Math.random() * 100; // percentage
         heart.style.left = x + "vw";
-
+  
         // random size
         const minSize = 20;
         const maxSize = 40;
         const size = minSize + Math.random() * (maxSize - minSize);
         heart.style.fontSize = size + "px";
-
+  
         // random speed (duration)
         const minDur = 7000; // ms
         const maxDur = 12000;
         const duration = minDur + Math.random() * (maxDur - minDur);
         heart.style.animationDuration = duration + "ms";
-
+  
         document.body.appendChild(heart);
         activeHearts.add(heart);
-
-        // remove when animation finishes
+  
         const removeHeart = () => {
           activeHearts.delete(heart);
           heart.remove();
         };
-
+  
         heart.addEventListener("animationend", removeHeart);
-
-        // click to remove + message
+  
+        // click to remove + message at heart position
         heart.addEventListener("click", (e) => {
           e.stopPropagation();
+          showMessageAtElement(heart);
           removeHeart();
-          showRandomMessage();
         });
       }
-
+  
       // spawn hearts at intervals, but respect maxHearts
       setInterval(() => {
         spawnHeart();
       }, 1000); // try every 1s; cap by maxHearts
-    });
-  </script>
+  });
+</script>
+
 </body>
 </html>
